@@ -1,0 +1,199 @@
+Only in new: FILE_ID.DIZ
+Only in new: README.EMX
+Only in new/MISC/EMX: patches.emx
+diff -cbr orig/flex.skl new/flex.skl
+*** orig/flex.skl	Wed Sep 11 01:58:54 1996
+--- new/flex.skl	Sun Feb 15 12:51:38 1998
+***************
+*** 9,14 ****
+--- 9,17 ----
+  #define YY_FLEX_MINOR_VERSION 5
+  
+  %-
++ #ifdef __CRTRSXNT__
++ #include <crtrsxnt.h>
++ #endif
+  #include <stdio.h>
+  %*
+  
+diff -cbr orig/flexdef.h new/flexdef.h
+*** orig/flexdef.h	Sun Jul 27 04:42:50 1997
+--- new/flexdef.h	Sun Feb 15 13:53:02 1998
+***************
+*** 28,37 ****
+  
+  /* @(#) $Header: /home/daffy/u0/vern/flex/RCS/flexdef.h,v 2.53 95/04/20 11:17:36 vern Exp $ (LBL) */
+  
+  #include <stdio.h>
+  #include <ctype.h>
+- 
+- #include "config.h"
+  
+  #ifdef __TURBOC__
+  #define HAVE_STRING_H 1
+--- 28,37 ----
+  
+  /* @(#) $Header: /home/daffy/u0/vern/flex/RCS/flexdef.h,v 2.53 95/04/20 11:17:36 vern Exp $ (LBL) */
+  
++ #include "config.h"
++ 
+  #include <stdio.h>
+  #include <ctype.h>
+  
+  #ifdef __TURBOC__
+  #define HAVE_STRING_H 1
+diff -cbr orig/main.c new/main.c
+*** orig/main.c	Sun Jul 27 04:32:18 1997
+--- new/main.c	Sun Feb 15 13:39:22 1998
+***************
+*** 614,619 ****
+--- 614,625 ----
+  	     program_name[strlen( program_name ) - 1] == '+' )
+  		C_plus_plus = true;
+  
++ 	if ( (argc == 1) && isatty(fileno(stdin)) )
++ 		{
++ 		usage();
++ 		exit(1);
++ 	        }
++  
+  	/* read flags */
+  	for ( --argc, ++argv; argc ; --argc, ++argv )
+  		{
+***************
+*** 1113,1118 ****
+--- 1119,1125 ----
+  	{
+  	FILE *f = stdout;
+  
++ 	fprintf( f, "\n%s version %s\n\n", program_name, flex_version );
+  	fprintf( f,
+  _( "%s [-bcdfhilnpstvwBFILTV78+? -C[aefFmr] -ooutput -Pprefix -Sskeleton]\n" ),
+  		program_name );
+diff -cbr orig/MISC/EMX/config.h new/MISC/EMX/config.h
+*** orig/MISC/EMX/config.h	Thu Apr 20 22:04:46 1995
+--- new/MISC/EMX/config.h	Sun Feb 15 13:52:40 1998
+***************
+*** 1,5 ****
+  /* ------------------------------------------------ */
+! /* version of config.h for OS/2                     */
+  /* ------------------------------------------------ */
+  
+  /* Define to empty if the keyword does not work.  */
+--- 1,5 ----
+  /* ------------------------------------------------ */
+! /* version of config.h for emx+gcc                  */
+  /* ------------------------------------------------ */
+  
+  /* Define to empty if the keyword does not work.  */
+***************
+*** 26,28 ****
+--- 26,33 ----
+  /* Define if platform-specific command line handling is necessary.  */
+  #define NEED_ARGV_FIXUP
+  #define argv_fixup(ac,av) { _response(ac,av); _wildcard(ac,av);}
++ 
++ #ifdef __CRTRSXNT__
++ #include <crtrsxnt.h>
++ #endif
++ 
+diff -cbr orig/MISC/EMX/Makefile.emx new/MISC/EMX/Makefile.emx
+*** orig/MISC/EMX/Makefile.emx	Thu Apr 20 22:01:28 1995
+--- new/MISC/EMX/Makefile.emx	Sun Feb 15 13:54:58 1998
+***************
+*** 1,14 ****
+  # make file for "flex" tool, emx+gcc
+  
+! release:
+! 	$(MAKE) -f Makefile.os2 flex.exe \
+! 	CC="gcc -Zomf -O" O=".obj" A=".lib" AR="emxomfar" \
+  	LDFLAGS="-s -Zcrtdll -Zstack 512"
+  debug:
+! 	$(MAKE) -f Makefile.os2 flex.exe \
+  	CC="gcc -g" O=".o" A=".a" AR="ar"
+  
+! CFLAGS = -DOS2 -DSHORT_FILE_NAMES
+  
+  YACC = bison 
+  FLEX = flex
+--- 1,20 ----
+  # make file for "flex" tool, emx+gcc
+  
+! os2release:
+! 	$(MAKE) -f Makefile.emx flex.exe \
+! 	CC="gcc -Zomf -O" \
+! 	O=".obj" A=".lib" AR="emxomfar" \
+  	LDFLAGS="-s -Zcrtdll -Zstack 512"
++ w32release:
++ 	$(MAKE) -f Makefile.emx flex.exe \
++ 	CC="gcc -Zwin32 -Zcrtdll=crtrsxnt -O" \
++ 	O=".o" A=".a" AR="ar" \
++ 	LDFLAGS="-s -Zstack 512"
+  debug:
+! 	$(MAKE) -f Makefile.emx flex.exe \
+  	CC="gcc -g" O=".o" A=".a" AR="ar"
+  
+! CFLAGS = -DSHORT_FILE_NAMES
+  
+  YACC = bison 
+  FLEX = flex
+***************
+*** 55,64 ****
+  tblcmp$O : tblcmp.c flexdef.h
+  yylex$O : yylex.c flexdef.h
+  
+! skel.c: flex.skl mkskel.sh
+! 	$(SHELL) mkskel.sh flex.skl >skel.c
+  
+! test : flex
+  	flex $(FLEX_FLAGS) $(COMPRESSION) scan.l | diff scan.c -
+  
+  bigtest :
+--- 61,70 ----
+  tblcmp$O : tblcmp.c flexdef.h
+  yylex$O : yylex.c flexdef.h
+  
+! #skel.c: flex.skl mkskel.sh
+! #	$(SHELL) mkskel.sh flex.skl >skel.c
+  
+! test:
+  	flex $(FLEX_FLAGS) $(COMPRESSION) scan.l | diff scan.c -
+  
+  bigtest :
+diff -cbr orig/skel.c new/skel.c
+*** orig/skel.c	Wed Sep 11 02:00:38 1996
+--- new/skel.c	Sun Feb 15 13:48:26 1998
+***************
+*** 14,19 ****
+--- 14,22 ----
+    "#define YY_FLEX_MINOR_VERSION 5",
+    "",
+    "%-",
++   "#ifdef __CRTRSXNT__",
++   "#include <crtrsxnt.h>",
++   "#endif",
+    "#include <stdio.h>",
+    "%*",
+    "",
+diff -cbr orig/yylex.c new/yylex.c
+*** orig/yylex.c	Sun Jul 27 04:32:20 1997
+--- new/yylex.c	Sun Feb 15 14:00:48 1998
+***************
+*** 28,35 ****
+  
+  /* $Header: /home/daffy/u0/vern/flex/RCS/yylex.c,v 2.13 95/03/04 16:10:41 vern Exp $ */
+  
+- #include <ctype.h>
+  #include "flexdef.h"
+  #include "parse.h"
+  
+  
+--- 28,35 ----
+  
+  /* $Header: /home/daffy/u0/vern/flex/RCS/yylex.c,v 2.13 95/03/04 16:10:41 vern Exp $ */
+  
+  #include "flexdef.h"
++ #include <ctype.h>
+  #include "parse.h"
+  
+  
